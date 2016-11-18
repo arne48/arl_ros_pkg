@@ -1,0 +1,12 @@
+[submodule "arl_interfaces"]
+	path = arl_interfaces
+	url = https://github.com/arne48/arl_interfaces.git
+[submodule "arl_controllers"]
+	path = arl_controllers
+	url = https://github.com/arne48/arl_controllers.git
+[submodule "arl_hw"]
+	path = arl_hw
+	url = https://github.com/arne48/arl_hw.git
+[submodule "arl_hw_msgs"]
+	path = arl_hw_msgs
+	url = https://github.com/arne48/arl_hw_msgs.git
