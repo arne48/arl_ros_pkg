@@ -10,3 +10,6 @@
 [submodule "arl_hw_msgs"]
 	path = arl_hw_msgs
 	url = https://github.com/arne48/arl_hw_msgs.git
+[submodule "arl_commons"]
+	path = arl_commons
+	url = ./arl_commons
