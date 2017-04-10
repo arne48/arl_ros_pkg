@@ -119,8 +119,8 @@ roslaunch arl_commons diagnostic_aggregator.launch
 
 ### Examples for using the System
 
-####Python
-#####Controlling a Muscle
+#### Python
+##### Controlling a Muscle
 ```python
 #!/usr/bin/env python
 import rospy
@@ -145,7 +145,7 @@ if __name__ == '__main__':
 ```
 
 
-#####Receiving Muscle Details
+##### Receiving Muscle Details
 ```python
 #!/usr/bin/env python
 import rospy
@@ -163,8 +163,8 @@ if __name__ == '__main__':
     observer()
 ```
 
-####C++
-#####Controlling a Muscle
+#### C++
+##### Controlling a Muscle
 ```cpp
 #include "ros/ros.h"
 #include "std_msgs/Float64.h"
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
 }
 ```
 
-#####Receiving Muscle Details
+##### Receiving Muscle Details
 ```cpp
 #include "ros/ros.h"
 #include "arl_hw_msgs/Muscle.h"
