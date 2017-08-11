@@ -216,6 +216,24 @@ int main(int argc, char **argv) {
 
 ## Important Remarks
 ### Hardware
-TBA
+#### Raspberry Pi 3 Setting of SPI Speed Devider
+An initial idea was to set the speed of the SPI bus according to the max speed of the controller which would be either read or wrote to.
+With this behavior it was thought to increase the overall cycle time by utilizing the individual controllers as efficient as possible.
+Under normal conditions without extensive load on the Raspberry Pi this worked out fine.
+But once the Raspberry Pi was put under more load it seems that the switching of the speed devision could take more time.
+This lead to a behavior were the Raspberry Pi tried to change the SPI speed. But this took longer than the time till the SPI transfer was started. So the Pi started the transfer with one clock speed and changed it inbetween during the active transfer.
+This lead to glitchy readings and writings to the controllers.
+__Because of this behavior the SPI speed is now fixed to the maximum all used controllers can work with.__
+
+#### Depreciation of Controller ID 0 and 1 on Platforms other than the Raspberry Pi 3
+By using the bcm2835 library to utilize the Raspberry Pie's SPI and GPIO interfaces it is possible use the normally dedicated hardware chip selects as regular GPIOs when using the _BCM2835_SPI_CS_NONE_ setting.
+This might not be possible on all platforms the driver will run on. It might be possible to set a related flag but the SPI block might hold control over the pins what makes them useless for software based addressing of the controllers.
+Because of this and the PCB layout which hardwires these pins to solder bridges it should be common practice to stop using these IDs altogether to avoid incompatibilities when changing to a different platform.
+
 ### Software
-TBA
+####Pitfalls related to the CMakeCache.txt when using options within the CMakeLists.txt
+In newer versions the driver is supposed to be build with the usage of several options which can be set within the CMakeLists.txt
+This should reduce the dependencies when building the driver on a specific platform or on a PC for testing or development reasons.
+This is a common practice when using CMake. Something counterintuitive is how and when these options are evaluated.
+Since they should introduce an additional possibility to configure your build it would make sense that this is done on every build.
+__Unfortunately from my experience this is done only once when the project is build the first time. Then the options are cached in the CMakeCache.txt file within the _build_ folder of your catkin workspace. _catkin_make clean_ does not solve this issue. So if you change any option the most safe way to make sure the changes are applied is to delete the whole content of the _build_ folder__
