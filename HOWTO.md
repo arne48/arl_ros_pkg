@@ -231,7 +231,7 @@ This might not be possible on all platforms the driver will run on. It might be 
 Because of this and the PCB layout which hardwires these pins to solder bridges it should be common practice to stop using these IDs altogether to avoid incompatibilities when changing to a different platform.
 
 ### Software
-####Pitfalls related to the CMakeCache.txt when using options within the CMakeLists.txt
+#### Pitfalls related to the CMakeCache.txt when using options within the CMakeLists.txt
 In newer versions the driver is supposed to be build with the usage of several options which can be set within the CMakeLists.txt
 This should reduce the dependencies when building the driver on a specific platform or on a PC for testing or development reasons.
 This is a common practice when using CMake. Something counterintuitive is how and when these options are evaluated.
