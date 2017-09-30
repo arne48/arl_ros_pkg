@@ -16,7 +16,7 @@ Pictures of the Raspberry Pi's actual pin usage and the pin order on the individ
 1. __The Air Valve Controller (Activation)__
 The Controller for the contineouse air valves _(Festo MPYE-5-M5)_   is a AD5360 DAC from Analog Devices.
 This DAC provides a voltage range of __ -10V ... 10V__ in _65536_ steps.
-_Festo's MPYE-5-M5_ puts it's actuation range from blow-off to completely open into the range of _0V... 10V_ which leaves the AD5360 with 32768 usable steps for setting the valve's position. 
+_Festo's MPYE-5-M5_ puts its actuation range from blow-off to completely open into the range of _0V... 10V_ which leaves the AD5360 with 32768 usable steps for setting the valve's position. 
 This range is mapped in within the controllers to a normalized mapping from _-1 ... 1_
 
 2. __The Pressure Sensor Controller (Pressure)__
@@ -40,16 +40,10 @@ The microcontroller of the load cell controller would support up to 18MHz, which
 	The control of a specific muscle is provided in two flavors.
 	
 	__Activation Control__
-	For the activation control a _Float64_ message from the _std_msgs_ is used. 
-	The topic name is based on the following scheme:
-	_/muscle\___\{ascending number\}__\_controller/activation_command_
 	The command represents a normalized activation value between __-1 ... 1__ analogous to a fully open or fully blowing-off valve.
 	
 	__Pressure Control__
-	For the pressure control a _Float64_ message from the _std_msgs_ is used as well. 
-	The topic name is based on the following scheme:
-	_/muscle\___\{ascending number\}__\_controller/pressure_command_
-	The command represents the raw measurement of the ADC from __0 ... 65535__ analogous to a pressure from _0 1 MPa_.
+	The command represents the raw measurement of the ADC from __0 ... 65535__ analogous to a pressure from _0 to 1 MPa_.
 	A common value for an empty muscle is about __3360__ with a variable maximum depending on the pressure currently available from the compressor.
 	Once requested the desired pressure is maintained by a _PID_ controller which is available for additional tuning using __dynamic_reconfigure__ for each individual muscle controller.
 	
@@ -66,6 +60,33 @@ The microcontroller of the load cell controller would support up to 18MHz, which
 	- _tension_filtered(Float64):_ filtered version of the tension's sensors values
 	- _activation(Float64):_ current value the valve is currently actuated with
 	- _control_mode(uint8):_ 0 indicates that muscle is under pressure control while 1 indicates activation control
+	
+	__MuscleCommand Message__
+	This message is used within the _MusculatureCommand_ message and contains the information needed to update the current command of a muscle.
+	
+	Included by this message are the following details:
+	-_name_ (String)
+	-_pressure_ (Float64)
+	-_activation_ (Float64)
+	-_control_mode_ (enum CONTROL_MODE_BY_[PRESSURE or ACTIVATION])
+		
+	__MusculatureCommand Message__
+	This message is part of the arl_hw_msgs package and is used to send a set of muscle commands in one message. 
+	The topic name for these messages is:
+	_/musculature/command_
+	
+	Included by this message are the following details:
+	-_header_ (Header)
+	-_muscle_commands_ (MuscleCommand[])
+	
+	__MusculatureState Message__
+	This messag eis part of the arl_hw_msgs package and is used to publish the state of all muscles in one message. 
+	The topic name for these messages is:
+	_/musculature/state_
+	
+	Included by this message are the following details:
+	-_header_ (Header)
+	-_muscle_states_ (Muscle[])
 	
 	__Emergency Stop__
 	To engage an _Emergency Stop_ a service with the service description _std_srv/Trigger_ can be called.
@@ -85,7 +106,7 @@ The available custom messages can be found in the [arl_hw_msgs](https://github.c
 Currently the only one actively used is the _Muscle Message_ which is used for publishing the muscle's detailed state. Details of this message can be found under the earlier bullet point _Muscle Message_.
 
 3. __Muscle Controller__
-The custom _MuscleController_ which is located in the [arl_controllers](https://github.com/arne48/arl_controllers) package is in charge of receiving muscle commands and publishing muscle states. Also the PID controller which is used during pressure control and the filter for the raw tension measurements are part of this controller.
+The custom _MuscleController_ which is located in the [arl_controllers](https://github.com/arne48/arl_controllers) package is in charge of publishing individual muscle states and also the PID controller which is used during pressure control and the filter for the raw tension measurements are part of this controller.
 
 4. __Commons__
 The [arl_commons](https://github.com/arne48/arl_commons) package contains test nodes and the launch file for starting the _diagnostic_aggregator_ for the driver.
@@ -124,17 +145,29 @@ roslaunch arl_commons diagnostic_aggregator.launch
 ```python
 #!/usr/bin/env python
 import rospy
-from std_msgs.msg import Float64
+from arl_hw_msgs.msg import MuscleCommand, MusculatureCommand
 
 def commander():
     rospy.init_node('muscle_commander', anonymous=True)
-    muscle_cmd_pub = rospy.Publisher('/muscle_1_controller/pressure_command', Float64, queue_size=10)
+    muscle_cmd_pub = rospy.Publisher('/musculature/command', MusculatureCommand, queue_size=10)
     rate = rospy.Rate(2)
     while not rospy.is_shutdown():
-        pub.publish(6000.0)
+        musculature_command = MusculatureCommand()
+        musculature_command.header.stamp = rospy.get_rostime()
+        musculature_command.header.frame_id = '0'
+        
+        muscle_command = MuscleCommand()
+        muscle_command.name = 'muscle_1'
+        muscle_command.pressure = 8000
+        muscle_command.activation = 0
+        muscle_command.control_mode = 0
+        musculature_command.muscle_commands.append(muscle_command)
+        
+        muscle_cmd_pub.publish(musculature_command)
         rate.sleep()
         
-        pub.publish(4000.0)
+        musculature_command.muscle_commands[0].pressure = 4000
+        muscle_cmd_pub.publish(musculature_command)
         rate.sleep()
 
 if __name__ == '__main__':
@@ -149,74 +182,24 @@ if __name__ == '__main__':
 ```python
 #!/usr/bin/env python
 import rospy
-from arl_hw_msgs.msg import Muscle
+from arl_hw_msgs.msg import Muscle, MusculatureState
 
-def muscle_callback(msg):
-    rospy.loginfo("My muscle %s flexed with an activation of %f", msg.name, msg.activation)
+def musculature_state_callback(msg):
+    for muscle in msg.muscle_states:
+        rospy.loginfo("My muscle %s flexed with an activation of %f", muscle.name, muscle.activation)
     
 def observer():
     rospy.init_node('muscle_observer', anonymous=True)
-    rospy.Subscriber("/muscle_1_controller/state", Muscle, muscle_callback)
+    self._musculature_state_subscriber = rospy.Subscriber('/musculature/state', MusculatureState, musculature_state_callback, queue_size=10)
     rospy.spin()
 
 if __name__ == '__main__':
     observer()
 ```
 
-#### C++
-##### Controlling a Muscle
-```cpp
-#include "ros/ros.h"
-#include "std_msgs/Float64.h"
-
-int main(int argc, char **argv) {
-  ros::init(argc, argv, "muscle_commander");
-  ros::NodeHandle nh;
-  ros::Publisher muscle_cmd_pub = nh.advertise<std_msgs::Float64>("/muscle_1_controller/pressure_command", 10);
-
-  ros::Rate loop_rate(2);
-  std_msgs::Float64 msg;
-  
-  while (ros::ok()) {
-    
-    msg.data = 6000.0;
-    muscle_cmd_pub.publish(msg);
-    ros::spinOnce();
-    loop_rate.sleep();
-    
-    msg.data = 4000.0;
-    muscle_cmd_pub.publish(msg);
-    ros::spinOnce();
-    loop_rate.sleep();
-
-  }
-  return 0;
-}
-```
-
-##### Receiving Muscle Details
-```cpp
-#include "ros/ros.h"
-#include "arl_hw_msgs/Muscle.h"
-
-void muscleCallback(const arl_hw_msgs::Muscle::ConstPtr& msg) {
-  ROS_INFO("My muscle %s flexed with an activation of %f", msg->name.c_str(), msg->activation);
-}
-
-int main(int argc, char **argv) {
-  ros::init(argc, argv, "muscle_observer");
-  ros::NodeHandle nh;
-  
-  ros::Subscriber muscle_sub = nh.subscribe("/muscle_1_controller/state", 10, muscleCallback);
-  ros::spin();
-  
-  return 0;
-}
-```
-
 ## Important Remarks
 ### Hardware
-#### Raspberry Pi 3 Setting of SPI Speed Devider
+#### Raspberry Pi 3 Setting of SPI Speed Divider
 An initial idea was to set the speed of the SPI bus according to the max speed of the controller which would be either read or wrote to.
 With this behavior it was thought to increase the overall cycle time by utilizing the individual controllers as efficient as possible.
 Under normal conditions without extensive load on the Raspberry Pi this worked out fine.
